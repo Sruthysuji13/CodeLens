@@ -1,0 +1,1056 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Secure Software Engineering RAG Assistant</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
+    rel="stylesheet">
+  <!-- Markdown renderer -->
+  <script src="https://cdn.jsdelivr.net/npm/marked@9/marked.min.js"></script>
+  <style>
+    :root {
+      --bg-dark: #0f141c;
+      --bg-panel: #161d2a;
+      --bg-card: #1c2536;
+      --border-color: #27354d;
+      --primary: #3b82f6;
+      --primary-hover: #2563eb;
+      --text-main: #f1f5f9;
+      --text-muted: #94a3b8;
+      --accent-green: #10b981;
+      --accent-amber: #f59e0b;
+      --accent-red: #ef4444;
+      --code-bg: #0b0f17;
+      --font-sans: 'Plus Jakarta Sans', system-ui, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      font-family: var(--font-sans);
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    header {
+      background-color: var(--bg-panel);
+      border-bottom: 1px solid var(--border-color);
+      padding: 12px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 60px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-icon {
+      background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+    }
+
+    .brand-title {
+      font-weight: 700;
+      font-size: 16px;
+      letter-spacing: -0.02em;
+    }
+
+    .brand-sub {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 500;
+      background-color: rgba(59, 130, 246, 0.15);
+      color: #60a5fa;
+      border: 1px solid rgba(59, 130, 246, 0.3);
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background-color: var(--primary);
+    }
+
+    .status-dot.active {
+      background-color: var(--accent-green);
+    }
+
+    .status-dot.indexing {
+      background-color: var(--accent-amber);
+      animation: pulse 1s infinite alternate;
+    }
+
+    @keyframes pulse {
+      from {
+        opacity: 0.4;
+      }
+
+      to {
+        opacity: 1;
+      }
+    }
+
+    .main-layout {
+      display: flex;
+      flex: 1;
+      height: calc(100vh - 60px);
+      overflow: hidden;
+    }
+
+    /* Left Sidebar: Repo Connection & File Explorer */
+    .sidebar {
+      width: 320px;
+      background-color: var(--bg-panel);
+      border-right: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .sidebar-section {
+      padding: 16px;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .sidebar-title {
+      font-size: 12px;
+      text-transform: uppercase;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .input-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    input,
+    select,
+    button {
+      font-family: inherit;
+    }
+
+    input[type="text"] {
+      width: 100%;
+      background-color: var(--code-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      padding: 8px 12px;
+      color: var(--text-main);
+      font-size: 13px;
+      outline: none;
+      transition: border 0.2s;
+    }
+
+    input[type="text"]:focus {
+      border-color: var(--primary);
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 8px 14px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: background-color 0.2s, opacity 0.2s;
+    }
+
+    .btn-primary {
+      background-color: var(--primary);
+      color: #fff;
+    }
+
+    .btn-primary:hover {
+      background-color: var(--primary-hover);
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .repo-select-wrapper {
+      margin-top: 10px;
+    }
+
+    select {
+      width: 100%;
+      background-color: var(--code-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      padding: 8px 12px;
+      color: var(--text-main);
+      font-size: 13px;
+      outline: none;
+    }
+
+    /* File Tree */
+    .file-tree-container {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px 16px;
+    }
+
+    .file-item {
+      padding: 6px 8px;
+      border-radius: 4px;
+      font-size: 12.5px;
+      font-family: var(--font-mono);
+      color: var(--text-muted);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      text-overflow: ellipsis;
+      overflow: hidden;
+      white-space: nowrap;
+    }
+
+    .file-item:hover {
+      background-color: var(--bg-card);
+      color: var(--text-main);
+    }
+
+    .file-item.active {
+      background-color: rgba(59, 130, 246, 0.2);
+      color: #93c5fd;
+    }
+
+    /* Main Chat & Question Area */
+    .chat-panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background-color: var(--bg-dark);
+      overflow: hidden;
+    }
+
+    .quick-queries {
+      padding: 12px 24px;
+      border-bottom: 1px solid var(--border-color);
+      background-color: rgba(22, 29, 42, 0.6);
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      white-space: nowrap;
+    }
+
+    .query-chip {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      color: var(--text-muted);
+      padding: 6px 12px;
+      border-radius: 999px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .query-chip:hover {
+      background-color: var(--primary);
+      color: #fff;
+      border-color: var(--primary);
+    }
+
+    .messages-container {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .message {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-width: 880px;
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    .message.user {
+      align-items: flex-end;
+    }
+
+    .message.assistant {
+      align-items: flex-start;
+    }
+
+    .bubble {
+      padding: 16px 20px;
+      border-radius: 10px;
+      font-size: 14px;
+      line-height: 1.65;
+    }
+
+    .message.user .bubble {
+      background-color: var(--primary);
+      color: #fff;
+      border-bottom-right-radius: 2px;
+    }
+
+    .message.assistant .bubble {
+      background-color: var(--bg-panel);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      border-bottom-left-radius: 2px;
+      width: 100%;
+    }
+
+    /* ── Markdown rendered inside assistant bubble ── */
+    .bubble h1,
+    .bubble h2,
+    .bubble h3,
+    .bubble h4 {
+      font-family: var(--font-sans);
+      font-weight: 600;
+      margin: 14px 0 6px 0;
+      line-height: 1.3;
+      color: var(--text-main);
+    }
+
+    .bubble h1 {
+      font-size: 16px;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 4px;
+    }
+
+    .bubble h2 {
+      font-size: 15px;
+      color: #93c5fd;
+    }
+
+    .bubble h3 {
+      font-size: 14px;
+      color: #7dd3fc;
+    }
+
+    .bubble h4 {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .bubble p {
+      margin: 0 0 10px 0;
+    }
+
+    .bubble p:last-child {
+      margin-bottom: 0;
+    }
+
+    .bubble ul,
+    .bubble ol {
+      margin: 6px 0 10px 0;
+      padding-left: 20px;
+    }
+
+    .bubble li {
+      margin-bottom: 4px;
+    }
+
+    .bubble strong {
+      color: #e2e8f0;
+      font-weight: 600;
+    }
+
+    .bubble em {
+      color: #cbd5e1;
+      font-style: italic;
+    }
+
+    /* Inline code */
+    .bubble code {
+      font-family: var(--font-mono);
+      background-color: rgba(99, 149, 234, 0.12);
+      color: #93c5fd;
+      padding: 1px 5px;
+      border-radius: 4px;
+      font-size: 12.5px;
+    }
+
+    /* Citation ref [N] path lines X-Y */
+    .bubble code.citation-ref {
+      background-color: rgba(16, 185, 129, 0.12);
+      color: #34d399;
+      font-weight: 600;
+    }
+
+    /* Code blocks */
+    .bubble pre {
+      background-color: #0d1117;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 12px 14px;
+      margin: 10px 0;
+      overflow-x: auto;
+    }
+
+    .bubble pre code {
+      background: none;
+      color: #e2e8f0;
+      padding: 0;
+      font-size: 12.5px;
+      font-family: var(--font-mono);
+    }
+
+    /* Blockquotes (used for ⚠️ fallback notices) */
+    .bubble blockquote {
+      border-left: 3px solid #f59e0b;
+      background: rgba(245, 158, 11, 0.07);
+      margin: 8px 0;
+      padding: 8px 12px;
+      border-radius: 0 6px 6px 0;
+      color: #fbbf24;
+      font-size: 13px;
+    }
+
+    .bubble blockquote p {
+      margin: 0;
+      color: #fbbf24;
+    }
+
+    /* Horizontal rule */
+    .bubble hr {
+      border: none;
+      border-top: 1px solid var(--border-color);
+      margin: 12px 0;
+    }
+
+    /* Secret Redaction Badge */
+    .secret-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background-color: rgba(245, 158, 11, 0.15);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+      color: #fbbf24;
+      font-size: 12px;
+      padding: 4px 10px;
+      border-radius: 6px;
+      margin-bottom: 8px;
+      font-weight: 500;
+    }
+
+    /* Source Snippets Accordion */
+    .sources-section {
+      width: 100%;
+      margin-top: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .sources-toggle {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      user-select: none;
+    }
+
+    .sources-toggle:hover {
+      color: var(--text-main);
+    }
+
+    .source-card {
+      background-color: var(--code-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      overflow: hidden;
+      font-size: 12px;
+    }
+
+    .source-header {
+      background-color: var(--bg-card);
+      padding: 8px 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border-color);
+      font-family: var(--font-mono);
+      color: #93c5fd;
+    }
+
+    .source-code {
+      padding: 10px 12px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      white-space: pre-wrap;
+      word-break: break-all;
+      color: #e2e8f0;
+      max-height: 220px;
+      overflow-y: auto;
+    }
+
+    /* Chat Input Form */
+    .chat-input-area {
+      padding: 16px 24px;
+      border-top: 1px solid var(--border-color);
+      background-color: var(--bg-panel);
+    }
+
+    .input-form {
+      display: flex;
+      gap: 12px;
+      max-width: 880px;
+      margin: 0 auto;
+    }
+
+    .input-form input {
+      flex: 1;
+      background-color: var(--code-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 12px 16px;
+      color: var(--text-main);
+      font-size: 14px;
+    }
+
+    /* File Viewer Modal */
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.75);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+      padding: 40px;
+    }
+
+    .modal.active {
+      display: flex;
+    }
+
+    .modal-content {
+      background-color: var(--bg-panel);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      width: 100%;
+      max-width: 900px;
+      max-height: 85vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .modal-header {
+      padding: 12px 18px;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-family: var(--font-mono);
+      font-size: 13px;
+    }
+
+    .modal-body {
+      padding: 16px;
+      overflow-y: auto;
+      background-color: var(--code-bg);
+    }
+
+    .modal-body pre {
+      font-family: var(--font-mono);
+      font-size: 12.5px;
+      line-height: 1.5;
+      color: #cbd5e1;
+    }
+
+    .close-btn {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 18px;
+    }
+
+    .close-btn:hover {
+      color: var(--text-main);
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- Top Navigation Header -->
+  <header>
+    <div class="brand">
+      <div class="brand-icon">🛡️</div>
+      <div>
+        <div class="brand-title">CodeLens - Secure Software Engineering RAG Assistant</div>
+        <div class="brand-sub">Tree-sitter AST &bull; Hybrid Semantic & BM25 &bull; Source-Grounded &bull; Secret
+          Masking</div>
+      </div>
+    </div>
+    <div id="llmStatusBadge" class="status-badge">
+      <div class="status-dot active"></div>
+      <span id="llmModeText">Connecting...</span>
+    </div>
+  </header>
+
+  <!-- Main Layout -->
+  <div class="main-layout">
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <!-- Repo Connection Section -->
+      <div class="sidebar-section">
+        <div class="sidebar-title">Connect Repository</div>
+        <div class="input-group">
+          <input type="text" id="repoUrlInput" placeholder="https://github.com/owner/repo or path" value="">
+          <button id="indexBtn" class="btn btn-primary" onclick="indexRepo()">
+            <span>⚡ Index Codebase</span>
+          </button>
+        </div>
+        <div class="repo-select-wrapper">
+          <label style="font-size: 11px; color: var(--text-muted); margin-bottom: 4px; display: block;">Active
+            Repository:</label>
+          <select id="repoSelect" onchange="onRepoChanged()">
+            <option value="">No repository indexed</option>
+          </select>
+        </div>
+        <div id="indexStatusText" style="font-size: 12px; color: var(--text-muted); margin-top: 8px;">Ready.</div>
+      </div>
+
+      <!-- File Explorer Section -->
+      <div class="sidebar-section" style="padding-bottom: 8px;">
+        <div class="sidebar-title">
+          <span>Repository Files</span>
+          <span id="fileCountBadge" style="color: var(--primary);">0 files</span>
+        </div>
+      </div>
+      <div id="fileTree" class="file-tree-container">
+        <div style="font-size: 12px; color: var(--text-muted); text-align: center; padding-top: 20px;">
+          Index a repository to view source files.
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Chat Panel -->
+    <div class="chat-panel">
+      <!-- Recommended Core Questions Chips -->
+      <div class="quick-queries">
+        <span style="font-size: 12px; color: var(--text-muted); display: flex; align-items: center;">Core
+          Questions:</span>
+        <button class="query-chip" onclick="askPreset('How does authentication work?')">How does authentication
+          work?</button>
+        <button class="query-chip" onclick="askPreset('Explain UserService.')">Explain UserService.</button>
+        <button class="query-chip" onclick="askPreset('Where is this function used?')">Where is this function
+          used?</button>
+        <button class="query-chip" onclick="askPreset('Which class implements this API?')">Which class implements this
+          API?</button>
+        <button class="query-chip" onclick="askPreset('Why might this API return 401?')">Why might this API return
+          401?</button>
+        <button class="query-chip" onclick="askPreset('Explain the login flow.')">Explain the login flow.</button>
+        <button class="query-chip"
+          onclick="askPreset('Which components could be affected if UserService changes?')">Which components could be
+          affected if UserService changes?</button>
+      </div>
+
+      <!-- Chat Messages -->
+      <div id="chatMessages" class="messages-container">
+        <div class="message assistant">
+          <div class="bubble">
+            <p><strong>👋 Welcome to the Secure Software Engineering RAG Assistant!</strong></p>
+            <p>Connect a GitHub repository or local repo on the left. Once indexed, you can ask natural-language
+              questions about architecture, implementations, endpoints, authentication flows, and dependencies.</p>
+            <p><em>All answers are strictly grounded in repository citations, and sensitive secrets/keys are masked
+                before sending context to the model.</em></p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Input Bar -->
+      <div class="chat-input-area">
+        <form class="input-form" onsubmit="event.preventDefault(); sendQuery();">
+          <input type="text" id="queryInput" placeholder="Ask a question about the codebase (e.g. How does login work?)"
+            autocomplete="off">
+          <button type="submit" id="sendBtn" class="btn btn-primary">Ask</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- File Content Modal -->
+  <div id="fileModal" class="modal" onclick="if(event.target === this) closeModal();">
+    <div class="modal-content">
+      <div class="modal-header">
+        <span id="modalFileName">File Viewer</span>
+        <button class="close-btn" onclick="closeModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <pre><code id="modalFileContent">Loading...</code></pre>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let activeRepo = "";
+    let isIndexing = false;
+
+    // Load initial repositories and system status
+    async function init() {
+      try {
+        const statusRes = await fetch("/api/status");
+        const status = await statusRes.json();
+        document.getElementById("llmModeText").textContent = `LLM: ${status.llm_provider}`;
+      } catch (e) {
+        console.error("Failed to load status:", e);
+      }
+
+      await loadRepositories();
+    }
+
+    async function loadRepositories() {
+      try {
+        const res = await fetch("/api/repositories");
+        const repos = await res.json();
+        const select = document.getElementById("repoSelect");
+        select.innerHTML = "";
+
+        if (repos.length === 0) {
+          select.innerHTML = '<option value="">No repository indexed</option>';
+          activeRepo = "";
+          updateFileTree([]);
+          return;
+        }
+
+        repos.forEach((r, idx) => {
+          const opt = document.createElement("option");
+          opt.value = r.name;
+          opt.textContent = `${r.name} (${r.total_chunks} chunks, ${r.total_files} files)`;
+          select.appendChild(opt);
+        });
+
+        if (!activeRepo || !repos.some(r => r.name === activeRepo)) {
+          activeRepo = repos[0].name;
+        }
+        select.value = activeRepo;
+        await loadRepoFiles(activeRepo);
+      } catch (e) {
+        console.error("Error loading repositories:", e);
+      }
+    }
+
+    async function loadRepoFiles(repoName) {
+      if (!repoName) return;
+      try {
+        const res = await fetch(`/api/repositories/${encodeURIComponent(repoName)}/files`);
+        if (res.ok) {
+          const files = await res.json();
+          updateFileTree(files);
+        } else {
+          updateFileTree([]);
+        }
+      } catch (e) {
+        console.error("Failed to fetch files:", e);
+      }
+    }
+
+    function updateFileTree(files) {
+      const tree = document.getElementById("fileTree");
+      const badge = document.getElementById("fileCountBadge");
+      badge.textContent = `${files.length} files`;
+
+      if (files.length === 0) {
+        tree.innerHTML = '<div style="font-size: 12px; color: var(--text-muted); text-align: center; padding-top: 20px;">No files available.</div>';
+        return;
+      }
+
+      tree.innerHTML = "";
+      files.forEach(f => {
+        const item = document.createElement("div");
+        item.className = "file-item";
+        item.innerHTML = `<span>📄</span> <span title="${f}">${f}</span>`;
+        item.onclick = () => viewFile(activeRepo, f);
+        tree.appendChild(item);
+      });
+    }
+
+    function onRepoChanged() {
+      const select = document.getElementById("repoSelect");
+      activeRepo = select.value;
+      loadRepoFiles(activeRepo);
+    }
+
+    async function indexRepo() {
+      const urlInput = document.getElementById("repoUrlInput");
+      const btn = document.getElementById("indexBtn");
+      const statusText = document.getElementById("indexStatusText");
+      const url = urlInput.value.trim();
+
+      if (!url) {
+        alert("Please enter a GitHub repository URL or local folder path.");
+        return;
+      }
+
+      btn.disabled = true;
+      statusText.textContent = "Cloning & indexing repository... Please wait.";
+
+      try {
+        const res = await fetch("/api/repositories/index", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ repo_url_or_path: url })
+        });
+
+        const data = await res.json();
+        if (res.ok) {
+          statusText.textContent = `Indexed ${data.repository.name} (${data.total_chunks} chunks).`;
+          activeRepo = data.repository.name;
+          await loadRepositories();
+        } else {
+          statusText.textContent = `Error: ${data.detail || "Indexing failed"}`;
+        }
+      } catch (e) {
+        statusText.textContent = `Network error: ${e.message}`;
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    function askPreset(queryText) {
+      document.getElementById("queryInput").value = queryText;
+      sendQuery();
+    }
+
+    async function sendQuery() {
+      const input = document.getElementById("queryInput");
+      const btn = document.getElementById("sendBtn");
+      const query = input.value.trim();
+
+      if (!query) return;
+      if (!activeRepo) {
+        alert("Please index or select a repository first.");
+        return;
+      }
+
+      // Append user bubble
+      appendUserMessage(query);
+      input.value = "";
+      btn.disabled = true;
+
+      // Append loading bubble
+      const loadingBubble = appendAssistantLoading();
+
+      try {
+        const res = await fetch("/api/query", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ repo_name: activeRepo, query: query, top_k: 5 })
+        });
+
+        const data = await res.json();
+        loadingBubble.remove();
+
+        if (res.ok) {
+          appendAssistantResponse(data);
+        } else {
+          appendAssistantError(data.detail || "An error occurred while answering.");
+        }
+      } catch (e) {
+        loadingBubble.remove();
+        appendAssistantError(`Network error: ${e.message}`);
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    function appendUserMessage(text) {
+      const container = document.getElementById("chatMessages");
+      const msg = document.createElement("div");
+      msg.className = "message user";
+      msg.innerHTML = `<div class="bubble">${escapeHtml(text)}</div>`;
+      container.appendChild(msg);
+      container.scrollTop = container.scrollHeight;
+    }
+
+    function appendAssistantLoading() {
+      const container = document.getElementById("chatMessages");
+      const msg = document.createElement("div");
+      msg.className = "message assistant";
+      msg.innerHTML = `
+        <div class="bubble">
+          <span style="color: var(--text-muted);">Retrieving code chunks & synthesizing source-grounded answer...</span>
+        </div>`;
+      container.appendChild(msg);
+      container.scrollTop = container.scrollHeight;
+      return msg;
+    }
+
+    function appendAssistantError(errorText) {
+      const container = document.getElementById("chatMessages");
+      const msg = document.createElement("div");
+      msg.className = "message assistant";
+      msg.innerHTML = `<div class="bubble" style="border-color: var(--accent-red); color: #fca5a5;">❌ ${escapeHtml(errorText)}</div>`;
+      container.appendChild(msg);
+      container.scrollTop = container.scrollHeight;
+    }
+
+    function appendAssistantResponse(data) {
+      const container = document.getElementById("chatMessages");
+      const msg = document.createElement("div");
+      msg.className = "message assistant";
+
+      let secretHtml = "";
+      if (data.secrets_masked_count > 0) {
+        secretHtml = `
+          <div class="secret-badge">
+            <span>🛡️</span>
+            <span><strong>${data.secrets_masked_count} secret(s) masked</strong> in context before LLM reasoning</span>
+          </div>`;
+      }
+
+      // Format markdown-like headers in answer
+      let formattedAnswer = formatAnswerText(data.answer);
+
+      // Format source snippets
+      let sourcesHtml = "";
+      if (data.citations && data.citations.length > 0) {
+        const sourceCards = data.citations.map((c, i) => `
+          <div class="source-card">
+            <div class="source-header">
+              <span><strong>${escapeHtml(c.label)}</strong> ${c.symbol_name ? `(${escapeHtml(c.symbol_name)})` : ''}</span>
+              <span style="font-size: 11px; opacity: 0.8;">${c.language || ''}</span>
+            </div>
+            <pre class="source-code">${escapeHtml(c.content)}</pre>
+          </div>
+        `).join("");
+
+        sourcesHtml = `
+          <div class="sources-section">
+            <details>
+              <summary class="sources-toggle">
+                <span>📚 Retrieved Grounding Sources (${data.citations.length} snippets)</span>
+              </summary>
+              <div style="margin-top: 8px; display: flex; flex-direction: column; gap: 8px;">
+                ${sourceCards}
+              </div>
+            </details>
+          </div>
+        `;
+      }
+
+      msg.innerHTML = `
+        <div class="bubble">
+          ${secretHtml}
+          <div>${formattedAnswer}</div>
+          ${sourcesHtml}
+        </div>
+      `;
+
+      container.appendChild(msg);
+      container.scrollTop = container.scrollHeight;
+    }
+
+    function formatAnswerText(text) {
+      if (!text) return "";
+
+      // Configure marked for clean output
+      marked.setOptions({
+        breaks: true,       // line breaks → <br>
+        gfm: true,          // GitHub-flavoured markdown
+        headerIds: false,   // no id attrs on headings
+        mangle: false,
+      });
+
+      // Render full markdown to HTML
+      let html = marked.parse(text);
+
+      // Style citation markers [1] path lines X-Y inside rendered HTML
+      html = html.replace(
+        /(\[\d+\][^<\n,]{3,60}lines\s+\d+-\d+)/g,
+        '<code class="citation-ref">$1</code>'
+      );
+
+      return html;
+    }
+
+    async function viewFile(repoName, filePath) {
+      const modal = document.getElementById("fileModal");
+      const title = document.getElementById("modalFileName");
+      const code = document.getElementById("modalFileContent");
+
+      title.textContent = `${repoName} / ${filePath}`;
+      code.textContent = "Loading file content...";
+      modal.classList.add("active");
+
+      try {
+        const res = await fetch(`/api/repositories/${encodeURIComponent(repoName)}/file?path=${encodeURIComponent(filePath)}`);
+        const data = await res.json();
+        if (res.ok) {
+          code.textContent = data.content;
+        } else {
+          code.textContent = `Error: ${data.detail}`;
+        }
+      } catch (e) {
+        code.textContent = `Failed to load file: ${e.message}`;
+      }
+    }
+
+    function closeModal() {
+      document.getElementById("fileModal").classList.remove("active");
+    }
+
+    function escapeHtml(str) {
+      if (!str) return "";
+      return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+    }
+
+    window.addEventListener("DOMContentLoaded", init);
+  </script>
+</body>
+
+</html>

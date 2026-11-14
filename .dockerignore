@@ -1,0 +1,13 @@
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.env
+.git
+.pytest_cache
+data/repositories/*
+!data/repositories/.gitkeep
+data/chroma/*
+!data/chroma/.gitkeep
+data/database/*
+!data/database/.gitkeep
